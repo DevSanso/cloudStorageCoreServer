@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+option java_outer_classname = "StorageGrpcService";
+
+service StorageService {
+    rpc GetLimitBlockSize(Empty) returns (BlockSize);
+    rpc CreatePool(Hash) returns (CommonMessage);
+    rpc DeletePool(PoolId) returns (CommonMessage);
+    rpc ExistId(PoolId) returns (CommonMessage);
+    rpc CheckHash(AccessKey) returns (CommonMessage);
+    rpc GetNodeInfo(CommonRpcUrl) returns (NodeInfo);
+    rpc GetChildNodeInfos(CommonRpcUrl) returns (NodeList);
+    rpc WriteOrCreateToNode(NodePoint) returns (WriteMessage);
+    rpc WriteToNode(NodePoint) returns (WriteMessage);
+    rpc ReadFromNode(NodePoint) returns (ReadMessage);
+    rpc reEditPermissionToNode(Permission) returns (CommonMessage);
+}
+
+message Empty {}
+message BlockSize {
+    int32 byteSize = 1;
+}
+message PoolId {
+    int64 id = 1;
+}
+message Hash {
+    bytes hash = 1;
+}
+
+message AccessKey {
+    PoolId id = 1;
+    Hash hash = 2;
+}
+
+message CommonRpcUrl {
+    AccessKey accessKey = 1;
+    string path = 2;
+}
+
+message Offset {
+    int64 offsetCount = 1;
+    int64 start = 2;
+    int64 end = 3;
+}
+
+message NodePoint {
+    AccessKey accessKey = 1;
+    string path = 2;
+    Offset offset = 3;
+    bytes block = 4;
+}
+
+
+message Permission {
+    string permission = 1;
+}
+
+
+message NodeList {
+    repeated NodeInfo nodes = 1;
+}
+
+message NodeInfo{
+    bool isDir = 1;
+    string baseName =2;
+    string path = 3;
+    int64 size = 4;
+    bytes permission = 5;
+}
+
+message CommonMessage {
+    int32 statusCode = 1;
+    string message = 2;
+}
+message WriteMessage {
+    CommonMessage message = 1;
+    repeated int32 completeOffset = 2;
+}
+message ReadMessage {
+    CommonMessage message = 1;
+    Offset offset = 2;
+    bytes block = 3;
+}
