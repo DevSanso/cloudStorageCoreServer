@@ -1,4 +1,4 @@
-package node
+package directory
 
 import java.io.File
 import java.io.FileNotFoundException
@@ -8,7 +8,7 @@ import java.io.RandomAccessFile;
 
 
 
-class PhysicsNode  {
+internal class PhysicsNode  {
     companion object {
         fun delete(node : PhysicsNode) {
             try {
