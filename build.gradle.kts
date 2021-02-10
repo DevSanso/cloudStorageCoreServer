@@ -29,7 +29,7 @@ buildscript {
 }
 
 dependencies {
-
+    implementation("org.xerial:sqlite-jdbc:3.28.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.4.21")
     implementation("io.grpc:grpc-core:1.34.1")
     implementation("io.grpc:grpc-stub:1.34.1")
