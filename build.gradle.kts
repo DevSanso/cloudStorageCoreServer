@@ -28,6 +28,8 @@ buildscript {
     }
 }
 
+val exposedVersion="0.29.1"
+
 dependencies {
     implementation("org.xerial:sqlite-jdbc:3.28.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.4.21")
@@ -35,6 +37,11 @@ dependencies {
     implementation("io.grpc:grpc-stub:1.34.1")
     implementation("javax.annotation:javax.annotation-api:1.3.2")
     implementation("io.grpc:grpc-protobuf:1.35.0")
+    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-jodatime:$exposedVersion")
+    implementation("joda-time:joda-time:2.10.9")
     testCompile("junit", "junit", "4.12")
 }
 
