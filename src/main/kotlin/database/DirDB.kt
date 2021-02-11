@@ -2,48 +2,59 @@ package database
 
 import java.io.File
 
-import java.sql.Connection
-import java.sql.DriverManager
-import java.sql.ResultSet
-import java.sql.SQLException
-import java.sql.Statement
-
+import java.util.*
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.jodatime.datetime;
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime;
 
 
 
 class DirDB {
     companion object {
         val driverName = "jdbc:sqlite"
-        private fun initDb(conn : Connection) {
-            val stat = conn.createStatement()
-            initTable(stat)
-            stat.close()
 
-        }
-        private fun initTable(stat : Statement) {
-            stat.executeUpdate("CREATE TABLE node_tree (name VARCHAR(128),PRIMARY KEY(name));")
-            stat.executeUpdate("CREATE TABLE node_origin_info (" +
-                    "filename VARCHAR(256)," +
-                    "tree VARCHAR(128)," +
-                    "size BIGINT," +
-                    "file_date DATETIME,"+
-                    "permission CHAR(1)," +
-                    "FOREIGN KEY(tree) REFERENCES node_tree(name));")
-        }
+    }
+    private object NodeTree : Table() {
+        val tree : Column<String> = varchar("tree",128)
+    }
+    private object NodeOriginInfo : Table() {
+        val fileName : Column<String> = varchar("filename",128).uniqueIndex()
+        override val primaryKey = PrimaryKey(fileName)
+
+        val tree : Column<String> = reference("tree",NodeTree.tree).uniqueIndex()
+        val size : Column<Int> = integer("size")
+        val fileDate : Column<DateTime> = datetime("file_date")
+        val permission : Column<Char> = char("permission")
     }
 
-    private var conn : Connection
+    private var conn : Database
 
     constructor(dbPath : String) {
         conn = if(!File(dbPath).exists()) {
-            var temp = DriverManager.getConnection(driverName+":"+dbPath)
-            DirDB.initDb(temp)
+            var temp = Database.connect("jdbc:sqlite:"+dbPath, "org.sqlite.JDBC")
+            SchemaUtils.create(NodeTree)
+            SchemaUtils.create(NodeOriginInfo)
             temp
+
         }else {
-            DriverManager.getConnection(driverName+":"+dbPath)
+            Database.connect("jdbc:sqlite:"+dbPath, "org.sqlite.JDBC")
         }
+
+    }
+    data class NodeInfo(val fileName : String,val tree : String,
+                        val fileDate : Date,val size : Long,val permission : Byte)
+
+    fun pushNodeTree(tree : String) {
+
     }
 
+    fun pushOriginNodeInfo(info : NodeInfo) {
+
+    }
+    fun getOriginNodeInfo() {
+
+    }
 
 
 
