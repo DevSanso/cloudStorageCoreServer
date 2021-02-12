@@ -1,18 +1,27 @@
 package database
 
 import java.io.File
-import java.nio.file.Paths;
+import java.nio.file.Paths
 
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.jodatime.datetime;
+import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime;
+import org.joda.time.DateTime
 
 
+data class NodeInfo(val fileName : String,val tree : String,
+                    val fileDate : DateTime,val size : Int,val permission : Int)
 
-class DirDB {
+interface OnlyGetInfoDb {
+    fun existFileInOrigin(info : NodeInfo) : Boolean
+    fun getNodeTrees(base : String) : ArrayList<String>
+    fun getNodeOriginNames(base : String) : ArrayList<String>
+    fun getNodeOriginInfo(base: String,name : String) : NodeInfo?
+}
+
+class DirDB(dbPath : String) : OnlyGetInfoDb {
     companion object {
-        val driverName = "jdbc:sqlite"
+        const val driverName = "jdbc:sqlite:"
 
     }
     private object NodeTree : Table() {
@@ -27,24 +36,20 @@ class DirDB {
         val permission : Column<Int> = integer("permission")
     }
 
-    private var conn : Database
-
-    constructor(dbPath : String) {
-        conn = if(!File(dbPath).exists()) {
-            var temp = Database.connect("jdbc:sqlite:"+dbPath, "org.sqlite.JDBC")
-            transaction(temp) {
-                SchemaUtils.create(NodeTree)
-                SchemaUtils.create(NodeOriginInfo)
-            }
-            temp
-
-        }else {
-            Database.connect("jdbc:sqlite:"+dbPath, "org.sqlite.JDBC")
+    private var conn : Database = if(!File(dbPath).exists()) {
+        val temp = Database.connect(driverName+dbPath, "org.sqlite.JDBC")
+        transaction(temp) {
+            SchemaUtils.create(NodeTree)
+            SchemaUtils.create(NodeOriginInfo)
         }
+        temp
 
+    }else {
+        Database.connect(driverName+dbPath, "org.sqlite.JDBC")
     }
-    data class NodeInfo(val fileName : String,val tree : String,
-                        val fileDate : DateTime,val size : Int,val permission : Int)
+
+
+
 
     fun insertNodeTree(treePath : String) {
         transaction (conn){
@@ -54,21 +59,7 @@ class DirDB {
             commit()
         }
     }
-    private fun existFileInOrigin(info : NodeInfo) : Boolean {
-        val exist = transaction(conn) {
-            val qb = QueryBuilder(false).append("SELECT ").append(
-                exists(NodeOriginInfo.select{
-                    NodeOriginInfo.tree.eq(info.tree) and NodeOriginInfo.fileName.eq(info.fileName)
-                })
-            )
 
-            exec(qb.toString()) {
-                it.next()
-                it.getInt(1)
-            }
-        }
-        return exist != null
-    }
     fun insertOriginNodeInfo(info : NodeInfo) {
         if(existFileInOrigin(info)) {
             throw IllegalArgumentException("Already Exist")
@@ -85,10 +76,24 @@ class DirDB {
             commit()
         }
     }
+    override fun existFileInOrigin(info : NodeInfo) : Boolean {
+        val exist = transaction(conn) {
+            val qb = QueryBuilder(false).append("SELECT ").append(
+                exists(NodeOriginInfo.select{
+                    NodeOriginInfo.tree.eq(info.tree) and NodeOriginInfo.fileName.eq(info.fileName)
+                })
+            )
 
-    fun getNodeTrees(base : String) : ArrayList<String> {
+            exec(qb.toString()) {
+                it.next()
+                it.getInt(1)
+            }
+        }
+        return exist != null
+    }
+    override fun getNodeTrees(base : String) : ArrayList<String> {
         return transaction(conn) {
-            var list = ArrayList<String>()
+            val list = ArrayList<String>()
             NodeTree.selectAll().forEach {
                 val row = Paths.get(it[NodeTree.tree])
                 if(row.parent.toString().equals(base)){
@@ -99,9 +104,9 @@ class DirDB {
         }
 
     }
-    fun getNodeOriginNames(base : String) : ArrayList<String> {
+    override fun getNodeOriginNames(base : String) : ArrayList<String> {
         return transaction(conn) {
-            var list = ArrayList<String>()
+            val list = ArrayList<String>()
             NodeOriginInfo.select {
                 NodeOriginInfo.tree.eq(base)
             }.forEach {
@@ -110,7 +115,7 @@ class DirDB {
             list
         }
     }
-    fun getNodeOriginInfo(base: String,name : String) : NodeInfo? {
+    override fun getNodeOriginInfo(base: String,name : String) : NodeInfo? {
         return transaction(conn) {
             val find = NodeOriginInfo.select {
                 NodeOriginInfo.tree.eq(base) and NodeOriginInfo.fileName.eq(name)
