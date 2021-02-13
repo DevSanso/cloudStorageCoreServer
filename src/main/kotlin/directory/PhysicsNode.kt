@@ -5,19 +5,19 @@ import java.io.FileNotFoundException
 import java.lang.Exception
 import java.io.RandomAccessFile;
 
+interface AccessNode {
+    fun readSector(index : Int) : Byte
+    fun readSector(start : Int, end : Int) : ByteArray
+    fun writeSector(index : Int,data : Byte)
+    fun writeSector(start : Int,dataOffset : Int,data : ByteArray)
+}
 
-
-
-internal class PhysicsNode  {
+internal class PhysicsNode : AccessNode {
     companion object {
         fun delete(node : PhysicsNode) {
-            try {
-                val isOk = node.file.delete()
-                if(!isOk)throw FileNotFoundException()
-            }catch(e : Exception) {
-                throw e
-            }
+            node.file.delete()
         }
+
         fun create(path : String,sectorSize: Int) : PhysicsNode {
             val file = File(path)
 
@@ -28,6 +28,15 @@ internal class PhysicsNode  {
                 throw e
             }
             return PhysicsNode(file,sectorSize)
+        }
+        fun createNoReturn(path : String,sectorSize: Int)  {
+            val file = File(path)
+            try {
+                val isOk = file.createNewFile()
+                if(!isOk)throw IllegalArgumentException("Already Exist File")
+            }catch(e : Exception) {
+                throw e
+            }
         }
 
         fun load(path : String,sectorSize: Int) : PhysicsNode {
@@ -40,11 +49,12 @@ internal class PhysicsNode  {
             return PhysicsNode(file,sectorSize)
         }
     }
+
     private val file : File
     private val sectorSize : Int
     private var privateSectorCount : Long = 0L
     val sectorCount : Long get() {return privateSectorCount}
-    val path : String get() {return file.path}
+    val hashPath : String get() {return file.name}
 
     private constructor(file : File,sectorSize : Int) {
         this.file = file
@@ -65,14 +75,14 @@ internal class PhysicsNode  {
         return access
     }
 
-    fun readSector(index : Int) : Byte {
+    override fun readSector(index : Int) : Byte {
         val access = fileAccess(index,"r")
         var res = access.read().toByte()
         access.close()
         return res
     }
 
-    fun readSector(start : Int, end : Int) : ByteArray {
+    override fun readSector(start : Int, end : Int) : ByteArray {
         val access = fileAccess(start,"r")
         var buf = ByteArray(end-start)
         access.read(buf,0,end-start)
@@ -80,20 +90,14 @@ internal class PhysicsNode  {
         return buf
     }
 
-    fun writeSector(index : Int,data : Byte) {
+    override fun writeSector(index : Int,data : Byte) {
         val access = fileAccess(index,"w")
         access.write(data.toInt())
         access.close()
     }
-    fun writeSector(start : Int,dataOffset : Int,data : ByteArray) {
+    override fun writeSector(start : Int,dataOffset : Int,data : ByteArray) {
         val access = fileAccess(start,"w")
         access.write(data,dataOffset,data.size)
         access.close()
     }
-
-
-
-
-
-
 }
