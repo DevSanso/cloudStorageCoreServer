@@ -3,7 +3,7 @@ package directory
 import java.security.MessageDigest
 import java.nio.file.Paths
 
-import database.*
+import directory.database.*
 
 
 class Directory(rootPath : String,db : DirDB) {
