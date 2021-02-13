@@ -6,10 +6,8 @@ import java.lang.Exception
 import java.io.RandomAccessFile;
 
 interface AccessNode {
-    fun readSector(index : Int) : Byte
     fun readSector(start : Int, end : Int) : ByteArray
-    fun writeSector(index : Int,data : Byte)
-    fun writeSector(start : Int,dataOffset : Int,data : ByteArray)
+    fun writeSector(start : Int,data : ByteArray)
 }
 
 internal class PhysicsNode : AccessNode {
@@ -75,29 +73,33 @@ internal class PhysicsNode : AccessNode {
         return access
     }
 
-    override fun readSector(index : Int) : Byte {
-        val access = fileAccess(index,"r")
-        var res = access.read().toByte()
-        access.close()
-        return res
-    }
+
 
     override fun readSector(start : Int, end : Int) : ByteArray {
-        val access = fileAccess(start,"r")
-        var buf = ByteArray(end-start)
-        access.read(buf,0,end-start)
+        if(end > sectorCount) {
+            throw ArrayIndexOutOfBoundsException()
+
+
+        }
+
+        val access = fileAccess(sectorSize * start,"r")
+        var buf = ByteArray((end-start) * sectorSize)
+        access.read(buf,0,buf.size)
         access.close()
         return buf
     }
 
-    override fun writeSector(index : Int,data : Byte) {
-        val access = fileAccess(index,"w")
-        access.write(data.toInt())
-        access.close()
+    private inline fun checkWriteConditional(dataSize : Int,start :Int) : Boolean {
+        return (dataSize % sectorSize == 0) && (((dataSize / sectorSize) + start) < sectorCount)
     }
-    override fun writeSector(start : Int,dataOffset : Int,data : ByteArray) {
+    override fun writeSector(start : Int,data : ByteArray) {
+        if(!checkWriteConditional(data.size,start)) {
+            throw IllegalArgumentException()
+        }
+
+
         val access = fileAccess(start,"w")
-        access.write(data,dataOffset,data.size)
+        access.write(data,0,data.size)
         access.close()
     }
 }
