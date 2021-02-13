@@ -1,4 +1,4 @@
-package directory.database
+package database.dir
 
 import java.io.File
 import java.nio.file.Paths
