@@ -23,7 +23,6 @@ interface OnlyGetInfoDb {
 class DirDB(dbPath : String) : OnlyGetInfoDb {
     companion object {
         const val driverName = "jdbc:sqlite:"
-
     }
     private object NodeTree : Table() {
 
@@ -64,7 +63,15 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
     }
 
 
+    fun existTree(tree : String) : Boolean {
+        val ptr = transaction(conn) {
+            NodeTree.select {
+                NodeTree.tree.eq(tree)
+            }.firstOrNull()
+        }
 
+        return ptr != null
+    }
 
     fun insertNodeTree(treePath : String) {
         transaction (conn){
@@ -80,7 +87,30 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
            }
         }
     }
-
+    fun insertOriginNodeInfo(info : NodeInfo,after : () -> Unit) {
+        if(existFileInOrigin(info.tree,info.fileName)) {
+            throw IllegalArgumentException("Already Exist")
+        }
+        transaction(conn) {
+            try {
+                transaction(conn) {
+                    NodeOriginInfo.insert {
+                        it[fileName] = info.fileName
+                        it[tree] = info.tree
+                        it[fileDate] = info.fileDate
+                        it[size] = info.size
+                        it[sectorSize] = info.sectorSize
+                        it[permission] = info.permission
+                    }
+                }
+                commit()
+                after()
+            }catch(e :Exception) {
+                rollback()
+                throw e
+            }
+        }
+    }
     fun insertOriginNodeInfo(info : NodeInfo) {
         if(existFileInOrigin(info.tree,info.fileName)) {
             throw IllegalArgumentException("Already Exist")
