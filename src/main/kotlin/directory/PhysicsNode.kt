@@ -4,6 +4,9 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.lang.Exception
 import java.io.RandomAccessFile;
+import java.nio.file.Paths
+import java.nio.file.Files
+
 
 interface AccessNode {
     fun readSector(start : Int, end : Int) : ByteArray
@@ -16,8 +19,8 @@ internal class PhysicsNode : AccessNode {
             node.file.delete()
         }
 
-        fun create(path : String,sectorSize: Int) : PhysicsNode {
-            val file = File(path)
+        fun createTemp(tempDirPath : String,name : String,sectorSize: Int) : PhysicsNode {
+            val file = Paths.get(tempDirPath,name).toFile()
 
             try {
                 val isOk = file.createNewFile()
@@ -27,18 +30,14 @@ internal class PhysicsNode : AccessNode {
             }
             return PhysicsNode(file,sectorSize)
         }
-        fun createNoReturn(path : String,sectorSize: Int)  {
-            val file = File(path)
-            try {
-                val isOk = file.createNewFile()
-                if(!isOk)throw IllegalArgumentException("Already Exist File")
-            }catch(e : Exception) {
-                throw e
-            }
+
+        fun move(src : PhysicsNode,root : String)  {
+            val dst = Paths.get(root,src.hashPath)
+            Files.move(src.file.toPath(),dst)
         }
 
-        fun load(path : String,sectorSize: Int) : PhysicsNode {
-            val file = File(path)
+        fun load(root : String,name : String,sectorSize: Int) : PhysicsNode {
+            val file = Paths.get(root,name).toFile()
             try {
                 if(!file.exists())throw FileNotFoundException()
             }catch(e : Exception) {
