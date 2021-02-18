@@ -11,9 +11,11 @@ import java.nio.file.Files
 interface AccessNode {
     fun readSector(start : Int, end : Int) : ByteArray
     fun writeSector(start : Int,data : ByteArray)
+    val sectorCount : Long
+    val sectorSize : Int
 }
 
-internal class PhysicsNode : AccessNode {
+internal class PhysicsNode private constructor(file : File,sectorSize : Int) : AccessNode {
     companion object {
         fun delete(node : PhysicsNode) {
             node.file.delete()
@@ -47,22 +49,20 @@ internal class PhysicsNode : AccessNode {
         }
     }
 
-    private val file : File
-    private val sectorSize : Int
-    private var privateSectorCount : Long = 0L
-    val sectorCount : Long get() {return privateSectorCount}
+    private val file : File = file
+    private val privateSectorSize : Int = sectorSize
+    private var privateSectorCount : Long = calculateSectorCount(sectorSize)
+
+    override val sectorCount : Long get() {return privateSectorCount}
+    override val sectorSize: Int get() = privateSectorSize
     val hashPath : String get() {return file.name}
 
-    private constructor(file : File,sectorSize : Int) {
-        this.file = file
-        this.sectorSize = sectorSize
-        calculateSectorCount()
-    }
-    private fun calculateSectorCount() {
-        privateSectorCount = if (0L != file.length() % sectorSize.toLong()) {
-            (file.length() / sectorSize.toLong()) + 1L
+
+    private fun calculateSectorCount(size : Int) : Long {
+        return if (0L != file.length() % size.toLong()) {
+            (file.length() / size.toLong()) + 1L
         }else {
-            file.length() / sectorSize.toLong()
+            file.length() / size.toLong()
         }
     }
 
@@ -81,15 +81,15 @@ internal class PhysicsNode : AccessNode {
 
         }
 
-        val access = fileAccess(sectorSize * start,"r")
-        var buf = ByteArray((end-start) * sectorSize)
+        val access = fileAccess(privateSectorSize * start,"r")
+        var buf = ByteArray((end-start) * privateSectorSize)
         access.read(buf,0,buf.size)
         access.close()
         return buf
     }
 
     private inline fun checkWriteConditional(dataSize : Int,start :Int) : Boolean {
-        return (dataSize % sectorSize == 0) && (((dataSize / sectorSize) + start) < sectorCount)
+        return (dataSize % privateSectorSize == 0) && (((dataSize / privateSectorSize) + start) < sectorCount)
     }
     override fun writeSector(start : Int,data : ByteArray) {
         if(!checkWriteConditional(data.size,start)) {
