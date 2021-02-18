@@ -4,9 +4,9 @@ option java_outer_classname = "StorageGrpcService";
 
 service StorageService {
     rpc GetLimitBlockSize(Empty) returns (BlockSize);
-    rpc CreatePool(Hash) returns (CommonMessage);
-    rpc DeletePool(PoolId) returns (CommonMessage);
-    rpc ExistId(PoolId) returns (CommonMessage);
+    rpc CreateDir(Hash) returns (CommonMessage);
+    rpc DeleteDir(DirId) returns (CommonMessage);
+    rpc ExistId(DirId) returns (CommonMessage);
     rpc CheckHash(AccessKey) returns (CommonMessage);
     rpc GetNodeInfo(CommonRpcUrl) returns (NodeInfo);
     rpc GetChildNodeInfos(CommonRpcUrl) returns (NodeList);
@@ -20,7 +20,7 @@ message Empty {}
 message BlockSize {
     int32 byteSize = 1;
 }
-message PoolId {
+message DirId {
     int64 id = 1;
 }
 message Hash {
@@ -28,7 +28,7 @@ message Hash {
 }
 
 message AccessKey {
-    PoolId id = 1;
+    DirId id = 1;
     Hash hash = 2;
 }
 
