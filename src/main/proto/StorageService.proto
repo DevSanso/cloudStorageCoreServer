@@ -3,10 +3,12 @@ syntax = "proto3";
 option java_outer_classname = "StorageGrpcService";
 
 service StorageService {
-    rpc GetLimitBlockSize(Empty) returns (BlockSize);
-    rpc CreateDir(Hash) returns (CommonMessage);
-    rpc DeleteDir(DirId) returns (CommonMessage);
-    rpc ExistId(DirId) returns (CommonMessage);
+    rpc GetLimitSectorSize(Empty) returns (SectorSize);
+
+    rpc CreateContainerId(Hash) returns (CommonMessage);
+    rpc DeleteContainerId(ContainerId) returns (CommonMessage);
+
+    rpc ExistId(ContainerId) returns (CommonMessage);
     rpc CheckHash(AccessKey) returns (CommonMessage);
     rpc GetNodeInfo(CommonRpcUrl) returns (NodeInfo);
     rpc GetChildNodeInfos(CommonRpcUrl) returns (NodeList);
@@ -17,10 +19,10 @@ service StorageService {
 }
 
 message Empty {}
-message BlockSize {
+message SectorSize {
     int32 byteSize = 1;
 }
-message DirId {
+message ContainerId {
     int64 id = 1;
 }
 message Hash {
@@ -28,7 +30,7 @@ message Hash {
 }
 
 message AccessKey {
-    DirId id = 1;
+    ContainerId id = 1;
     Hash hash = 2;
 }
 
