@@ -2,13 +2,14 @@ package database.dir
 
 import java.io.File
 import java.nio.file.Paths
+import java.lang.Exception
 
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
-import java.lang.Exception
 
+import errors.*
 
 data class NodeInfo(val fileName : String,val tree : String,
                     val fileDate : DateTime,val size : Int,val sectorSize : Int,val permission : Int)
@@ -38,6 +39,7 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
         val sectorSize : Column<Int> = integer("sector_size")
         val fileDate : Column<DateTime> = datetime("file_date")
         val permission : Column<Int> = integer("permission")
+        val isTemp : Column<Boolean> = bool("is_temp")
     }
 
     private var conn : Database = if(!File(dbPath).exists()) {
@@ -87,9 +89,9 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
            }
         }
     }
-    fun insertOriginNodeInfo(info : NodeInfo,after : () -> Unit) {
+    fun insertTempOriginNodeInfo(info : NodeInfo,after : () -> Unit) {
         if(existFileInOrigin(info.tree,info.fileName)) {
-            throw IllegalArgumentException("Already Exist")
+            throw AlreadyExistFileException()
         }
         transaction(conn) {
             try {
@@ -101,19 +103,21 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
                         it[size] = info.size
                         it[sectorSize] = info.sectorSize
                         it[permission] = info.permission
+                        it[isTemp] = true
                     }
                 }
-                commit()
                 after()
+                commit()
+
             }catch(e :Exception) {
                 rollback()
                 throw e
             }
         }
     }
-    fun insertOriginNodeInfo(info : NodeInfo) {
+    fun insertTempOriginNodeInfo(info : NodeInfo) {
         if(existFileInOrigin(info.tree,info.fileName)) {
-            throw IllegalArgumentException("Already Exist")
+            throw AlreadyExistFileException()
         }
 
         transaction(conn) {
@@ -124,10 +128,27 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
                 it[size] = info.size
                 it[sectorSize] = info.sectorSize
                 it[permission] = info.permission
+                it[isTemp] = true
             }
             commit()
         }
     }
+
+    fun switchtempToFalse(tree : String,fileName : String) {
+        transaction(conn) {
+
+            NodeOriginInfo.update({
+                NodeOriginInfo.tree.eq(tree) and
+                        NodeOriginInfo.fileName.eq(fileName)
+            }) {
+                it[isTemp] = false
+            }
+
+            commit()
+        }
+    }
+
+
     fun deleteOriginNodeInfo(tree : String,fileName :String) {
         transaction(conn) {
            try {
@@ -168,7 +189,18 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
             }
         }
     }
-
+    fun getNodeSectorSize(tree: String,fileName : String) : Int {
+        return transaction(conn) {
+            val find = NodeOriginInfo.select {
+                NodeOriginInfo.tree.eq(tree) and NodeOriginInfo.fileName.eq(fileName) and
+                        NodeOriginInfo.isTemp.eq(false)
+            }.firstOrNull()
+            if (find == null) throw DbIntegrityViolationException()
+            else {
+               find[NodeOriginInfo.sectorSize]
+            }
+        }
+    }
 
     override fun existFileInOrigin(tree: String,fileName : String) : Boolean {
         val exist = transaction(conn) {
@@ -201,7 +233,7 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
         return transaction(conn) {
             val list = ArrayList<String>()
             NodeOriginInfo.select {
-                NodeOriginInfo.tree.eq(base)
+                NodeOriginInfo.tree.eq(base) and NodeOriginInfo.isTemp.eq(false)
             }.forEach {
                 list.add(it[NodeOriginInfo.fileName])
             }
@@ -211,7 +243,7 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
     override fun getNodeOriginInfo(base: String,name : String) : NodeInfo? {
         return transaction(conn) {
             val find = NodeOriginInfo.select {
-                NodeOriginInfo.tree.eq(base) and NodeOriginInfo.fileName.eq(name)
+                NodeOriginInfo.tree.eq(base) and NodeOriginInfo.fileName.eq(name) and NodeOriginInfo.isTemp.eq(false)
             }.firstOrNull()
             if (find == null) null
             else {
