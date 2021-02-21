@@ -7,6 +7,7 @@ import javax.crypto.spec.SecretKeySpec
 
 import utils.bytesToInt
 import utils.int32ToBytes
+import java.io.FileNotFoundException
 import java.lang.IllegalArgumentException
 
 
@@ -52,6 +53,7 @@ class WriteNode(val file : File,val physicsSectorSize : Int) {
     private val access = RandomAccessFile(file,"w")
 
     init {
+        if(!file.exists())throw FileNotFoundException()
         access.seek(0)
     }
     fun write(index : Int,key : SecretKey,sector: Sector)  {
@@ -72,5 +74,6 @@ class WriteNode(val file : File,val physicsSectorSize : Int) {
         access.write(output)
     }
 
+    internal fun close() = access.close()
 
 }
