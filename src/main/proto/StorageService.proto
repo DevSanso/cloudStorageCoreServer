@@ -5,20 +5,32 @@ option java_outer_classname = "StorageGrpcService";
 service StorageService {
     rpc GetLimitSectorSize(Empty) returns (SectorSize);
 
-    rpc CreateContainerId(Hash) returns (CommonMessage);
-    rpc DeleteContainerId(ContainerId) returns (CommonMessage);
-
+    rpc CreateContainer(Hash) returns (CommonMessage);
+    rpc LoadContainer(AccessKey) returns (CommonMessage);
+    rpc DeleteContainer(ContainerId) returns (CommonMessage);
     rpc ExistId(ContainerId) returns (CommonMessage);
-    rpc CheckHash(AccessKey) returns (CommonMessage);
+
+
     rpc GetNodeInfo(CommonRpcUrl) returns (NodeInfo);
     rpc GetChildNodeInfos(CommonRpcUrl) returns (NodeList);
-    rpc WriteOrCreateToNode(NodePoint) returns (WriteMessage);
-    rpc WriteToNode(NodePoint) returns (WriteMessage);
-    rpc ReadFromNode(NodePoint) returns (ReadMessage);
+
+    rpc CreateTree(CommonRpcUrl) returns (CommonMessage);
+    rpc DeleteTree(CommonRpcUrl) returns (CommonMessage);
+
+    rpc CreateNode(NodeInfo) returns (CommonMessage);
+    rpc DeleteNode(NodeAccess) returns (CommonMessage);
+    rpc LoadWriteNode(NodeAccess) returns (NodeAccessId);
+    rpc LoadReadNode(NodeAccess) returns (NodeAccessId);
+
+    rpc WriteSectorArray(NodePoint) returns (WriteMessage);
+    rpc ReadSectorArray(NodePoint) returns (ReadMessage);
+
+
     rpc reEditPermissionToNode(Permission) returns (CommonMessage);
 }
 
 message Empty {}
+
 message SectorSize {
     int32 byteSize = 1;
 }
@@ -28,14 +40,13 @@ message ContainerId {
 message Hash {
     bytes hash = 1;
 }
-
 message AccessKey {
     ContainerId id = 1;
     Hash hash = 2;
 }
 
 message CommonRpcUrl {
-    AccessKey accessKey = 1;
+    ContainerId id = 1;
     string path = 2;
 }
 
@@ -45,39 +56,51 @@ message Offset {
     int64 end = 3;
 }
 
-message NodePoint {
-    AccessKey accessKey = 1;
+message NodeAccess {
+    ContainerId id = 1;
     string path = 2;
-    Offset offset = 3;
-    bytes block = 4;
+}
+
+message NodePoint {
+    ContainerId id = 1;
+    NodeAccessId nodeId = 2;
+    string path = 3;
+    Offset offset = 4;
+    bytes block = 5;
 }
 
 
 message Permission {
-    string permission = 1;
+    string path = 1;
+    int32 permission = 2;
 }
-
 
 message NodeList {
     repeated NodeInfo nodes = 1;
 }
 
 message NodeInfo{
-    bool isDir = 1;
-    string baseName =2;
+    bool isTree = 1;
+    string fileName =2;
     string path = 3;
     int64 size = 4;
     bytes permission = 5;
+}
+
+message NodeAccessId {
+    int32 nodeId = 1;
 }
 
 message CommonMessage {
     int32 statusCode = 1;
     string message = 2;
 }
+
 message WriteMessage {
     CommonMessage message = 1;
     repeated int32 completeOffset = 2;
 }
+
 message ReadMessage {
     CommonMessage message = 1;
     Offset offset = 2;
