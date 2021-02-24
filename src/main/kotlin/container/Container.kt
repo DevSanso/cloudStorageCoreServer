@@ -42,12 +42,14 @@ class Container(val root : String,private val db : DirDB) {
 
     fun writeNodeClose(node : WriteNode,tree : String, fileName : String) {
         node.close()
-        db.switchtempToFalse(tree,fileName)
+        db.switchTempToFalse(tree,fileName)
     }
 
     fun createReadNode(tree : String,fileName : String) : ReadNode? {
         if(!db.existFileInOrigin(tree,fileName))
             throw FileNotFoundException()
+        else if(db.existTempInOrigin(tree,fileName))
+            throw DbIntegrityViolationException()
 
         val shaPath = sha256Path(combinePath(tree,fileName)).toString()
         val f = File(shaPath)
