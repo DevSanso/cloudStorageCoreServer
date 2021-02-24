@@ -134,7 +134,7 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
         }
     }
 
-    fun switchtempToFalse(tree : String,fileName : String) {
+    fun switchTempToFalse(tree : String,fileName : String) {
         transaction(conn) {
 
             NodeOriginInfo.update({
@@ -202,11 +202,29 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
         }
     }
 
+    fun existTempInOrigin(tree: String,fileName : String) : Boolean {
+        val exist = transaction(conn) {
+            val qb = QueryBuilder(false).append("SELECT ").append(
+                exists(NodeOriginInfo.select{
+                    NodeOriginInfo.tree.eq(tree) and NodeOriginInfo.fileName.eq(fileName) and
+                            NodeOriginInfo.isTemp.eq(true)
+                })
+            )
+
+            exec(qb.toString()) {
+                it.next()
+                it.getInt(1)
+            }
+        }
+        return exist != null
+    }
+
     override fun existFileInOrigin(tree: String,fileName : String) : Boolean {
         val exist = transaction(conn) {
             val qb = QueryBuilder(false).append("SELECT ").append(
                 exists(NodeOriginInfo.select{
-                    NodeOriginInfo.tree.eq(tree) and NodeOriginInfo.fileName.eq(fileName)
+                    NodeOriginInfo.tree.eq(tree) and NodeOriginInfo.fileName.eq(fileName) and
+                            NodeOriginInfo.isTemp.eq(false)
                 })
             )
 
