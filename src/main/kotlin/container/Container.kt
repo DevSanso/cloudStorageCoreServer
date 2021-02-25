@@ -26,7 +26,7 @@ class Container(val root : String,private val db : DirDB) {
     private inline fun combinePath(tree : String,fileName : String)  = tree + File.separator + fileName
 
 
-    fun createWriteNode(info : NodeInfo,totalSectorCount : Int) : WriteNode {
+    fun createWriteNode(info : NodeInfo,sectorSize : Int,totalSectorCount : Int) : WriteNode {
         if(db.existFileInOrigin(info.tree,info.fileName))
             throw AlreadyExistFileException()
 
@@ -34,10 +34,10 @@ class Container(val root : String,private val db : DirDB) {
         val f = File(shaPath)
 
         db.insertTempOriginNodeInfo(info) {
-            createTemp(f,(info.sectorSize * totalSectorCount).toLong())
+            createTemp(f,(sectorSize * totalSectorCount).toLong())
         }
 
-        return WriteNode(f,info.sectorSize)
+        return WriteNode(f,sectorSize)
     }
 
     fun writeNodeClose(node : WriteNode,tree : String, fileName : String) {
@@ -45,7 +45,7 @@ class Container(val root : String,private val db : DirDB) {
         db.switchTempToFalse(tree,fileName)
     }
 
-    fun createReadNode(tree : String,fileName : String) : ReadNode? {
+    fun createReadNode(tree : String,sectorSize : Int,fileName : String) : ReadNode? {
         if(!db.existFileInOrigin(tree,fileName))
             throw FileNotFoundException()
         else if(db.existTempInOrigin(tree,fileName))
@@ -54,9 +54,7 @@ class Container(val root : String,private val db : DirDB) {
         val shaPath = sha256Path(combinePath(tree,fileName)).toString()
         val f = File(shaPath)
 
-        val sSize = db.getNodeSectorSize(tree,fileName)
-
-        return ReadNode(f,sSize)
+        return ReadNode(f, sectorSize)
     }
 
     fun delete(tree : String,fileName : String) {

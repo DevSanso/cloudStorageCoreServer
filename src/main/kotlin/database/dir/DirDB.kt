@@ -12,7 +12,7 @@ import org.joda.time.DateTime
 import errors.*
 
 data class NodeInfo(val fileName : String,val tree : String,
-                    val fileDate : DateTime,val size : Int,val sectorSize : Int,val permission : Int)
+                    val fileDate : DateTime,val size : Int,val permission : Int)
 
 interface OnlyGetInfoDb {
     fun existFileInOrigin(base: String,name : String) : Boolean
@@ -36,7 +36,6 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
         val fileName : Column<String> = varchar("filename",128)
         val tree : Column<String> = reference("tree",NodeTree.tree).uniqueIndex()
         val size : Column<Int> = integer("size")
-        val sectorSize : Column<Int> = integer("sector_size")
         val fileDate : Column<DateTime> = datetime("file_date")
         val permission : Column<Int> = integer("permission")
         val isTemp : Column<Boolean> = bool("is_temp")
@@ -101,7 +100,6 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
                         it[tree] = info.tree
                         it[fileDate] = info.fileDate
                         it[size] = info.size
-                        it[sectorSize] = info.sectorSize
                         it[permission] = info.permission
                         it[isTemp] = true
                     }
@@ -126,7 +124,6 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
                 it[tree] = info.tree
                 it[fileDate] = info.fileDate
                 it[size] = info.size
-                it[sectorSize] = info.sectorSize
                 it[permission] = info.permission
                 it[isTemp] = true
             }
@@ -189,18 +186,7 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
             }
         }
     }
-    fun getNodeSectorSize(tree: String,fileName : String) : Int {
-        return transaction(conn) {
-            val find = NodeOriginInfo.select {
-                NodeOriginInfo.tree.eq(tree) and NodeOriginInfo.fileName.eq(fileName) and
-                        NodeOriginInfo.isTemp.eq(false)
-            }.firstOrNull()
-            if (find == null) throw DbIntegrityViolationException()
-            else {
-               find[NodeOriginInfo.sectorSize]
-            }
-        }
-    }
+
 
     fun existTempInOrigin(tree: String,fileName : String) : Boolean {
         val exist = transaction(conn) {
@@ -267,7 +253,7 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
             else {
                 NodeInfo(find[NodeOriginInfo.fileName],find[NodeOriginInfo.tree],
                     find[NodeOriginInfo.fileDate],find[NodeOriginInfo.size],
-                    find[NodeOriginInfo.sectorSize],find[NodeOriginInfo.permission])
+                    find[NodeOriginInfo.permission])
             }
         }
     }
