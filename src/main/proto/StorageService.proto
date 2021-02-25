@@ -12,6 +12,7 @@ service StorageService {
 
 
     rpc GetNodeInfo(CommonRpcUrl) returns (NodeInfo);
+    rpc GetNodeInfoOnlyPermission(CommonRpcUrl) returns (Permission);
     rpc GetChildNodeInfos(CommonRpcUrl) returns (NodeList);
 
     rpc CreateTree(CommonRpcUrl) returns (CommonMessage);
