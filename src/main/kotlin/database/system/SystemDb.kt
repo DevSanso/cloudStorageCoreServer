@@ -7,9 +7,9 @@ import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-data class DirInfo(val id : Int,val created : DateTime,
-                   val hash : String,val localdbName : String,
-                   val dirBaseName : String,val sectorSize : Int)
+data class ContainerData(val id : Int, val created : DateTime,
+                         val hash : String, val localdbName : String,
+                         val dirBaseName : String, val sectorSize : Int)
 
 
 class SystemDb(private val systemDb : Database) {
@@ -36,7 +36,7 @@ class SystemDb(private val systemDb : Database) {
 
 
 
-    fun createDir(hash : String,sector_Size : Int) : Int {
+    fun createContainer(hash : String,sector_Size : Int) : Int {
         val digest = MessageDigest.getInstance("MD5")
         val now = DateTime.now()
         val localDb = makeLocalDbName(digest,hash,now)
@@ -58,13 +58,13 @@ class SystemDb(private val systemDb : Database) {
             }.first()[ContainerInfo.id]
         }
     }
-    fun getDirInfo(id : Int)  : DirInfo {
+    fun getContainerInfo(id : Int)  : ContainerData {
         val row = transaction(systemDb) {
             ContainerInfo.select {
                 ContainerInfo.id.eq(id)
             }.first()
         }
-        return DirInfo(
+        return ContainerData(
             row[ContainerInfo.id],
             row[ContainerInfo.createDate],
             row[ContainerInfo.checkHash],
@@ -72,7 +72,17 @@ class SystemDb(private val systemDb : Database) {
             row[ContainerInfo.dirBaseName],
             row[ContainerInfo.sectorSize])
     }
-    fun deleteDir(id : Int)  {
+
+    fun getContainerSectorSize(id : Int)  : Int {
+        val row = transaction(systemDb) {
+            ContainerInfo.select {
+                ContainerInfo.id.eq(id)
+            }.first()
+        }
+        return row[ContainerInfo.sectorSize]
+    }
+
+    fun deleteContainer(id : Int)  {
        transaction(systemDb) {
            try {
                ContainerInfo.deleteWhere {

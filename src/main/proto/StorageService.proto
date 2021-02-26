@@ -3,12 +3,11 @@ syntax = "proto3";
 option java_outer_classname = "StorageGrpcService";
 
 service StorageService {
-    rpc GetLimitSectorSize(Empty) returns (SectorSize);
+    rpc GetLimitSectorSize(ContainerId) returns (SectorSize);
 
     rpc CreateContainer(Hash) returns (CommonMessage);
     rpc LoadContainer(AccessKey) returns (CommonMessage);
     rpc DeleteContainer(ContainerId) returns (CommonMessage);
-    rpc ExistId(ContainerId) returns (CommonMessage);
 
 
     rpc GetNodeInfo(CommonRpcUrl) returns (NodeInfo);
@@ -30,7 +29,7 @@ service StorageService {
     rpc reEditPermissionToNode(Permission) returns (CommonMessage);
 }
 
-message Empty {}
+
 
 message SectorSize {
     int32 byteSize = 1;
@@ -40,6 +39,10 @@ message ContainerId {
 }
 message Hash {
     bytes hash = 1;
+}
+message CreatePool {
+    Hash hash = 1;
+    SectorSize size = 2;
 }
 message AccessKey {
     ContainerId id = 1;
