@@ -23,7 +23,7 @@ private inline fun getCipher(op : Int,key : SecretKey) : Cipher {
     c.init(op,ks)
     return c
 }
-private fun checkLimitDataLen(phySize : Int,d : ByteArray) = d.size > (phySize / 3) * 2
+
 
 
 
@@ -58,7 +58,7 @@ class WriteNode(val file : File,val physicsSectorSize : Int) {
     }
     fun write(index : Int,key : SecretKey,sector: Sector)  {
         if(index > sectorCount)throw ArrayIndexOutOfBoundsException()
-        else if(checkLimitDataLen(physicsSectorSize,sector.data))throw IllegalArgumentException()
+
 
         access.seek((physicsSectorSize * index).toLong())
 
