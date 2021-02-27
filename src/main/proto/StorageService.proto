@@ -88,7 +88,8 @@ message NodeInfo{
     string fileName =2;
     string path = 3;
     int64 size = 4;
-    bytes permission = 5;
+    int32 permission = 5;
+    string date = 6;
 }
 
 message NodeAccessId {
