@@ -26,7 +26,6 @@ enum class WorKerKind {
     GetChildNodeInfos,
     CreateTree,
     DeleteTree,
-    CreateNode,
     DeleteNode,
     LoadWriteNode,
     LoadReadNode,
@@ -48,6 +47,9 @@ abstract class Worker {
                 WorKerKind.LoadContainer ->  LoadContainerWorker(pool,arg)
                 WorKerKind.DeleteContainer -> DeleteContainerWorker(pool,arg)
                 WorKerKind.GetNodeInfo -> GetNodeInfoWorker(pool,arg)
+                WorKerKind.GetChildNodeInfos -> GetChildNodeInfosWorker(pool,arg)
+                WorKerKind.CreateTree -> CreateTreeWorker(pool,arg)
+                WorKerKind.DeleteTree -> DeleteTreeWorker(pool,arg)
                 else -> throw Exception()
             }
 
@@ -160,7 +162,7 @@ private class DeleteContainerWorker
         return res
     }
 
-    override val name : String get() {return "LoadContainerWorker"}
+    override val name : String get() {return "DeleteContainerWorker"}
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
@@ -213,7 +215,102 @@ private class GetNodeInfoWorker
         return res
     }
 
-    override val name : String get() {return "LoadContainerWorker"}
+    override val name : String get() {return "GetNodeInfoWorker"}
+    override suspend fun run()  {
+        response.send(WorkerResponse(name,entry(arg)))
+    }
+    override val response = Channel<WorkerResponse>()
+
+}
+
+private class GetChildNodeInfosWorker
+    (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
+    override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
+        var res : NodeList
+        try {
+            val castArg = arg as CommonRpcUrl
+            val container = pool.getContainer(castArg.id.id.toInt())
+            val nodeInfos = container.getDb.getNodeOriginInfos(castArg.path)
+            res = NodeList.newBuilder().addAllNodes(makeList(nodeInfos)).build()
+        }catch (e : Exception) {
+            response.close()
+            if(e is ClassCastException)throw CantConvertGrpcArgsException()
+            throw e
+        }
+        return res
+    }
+    private fun makeList(li : ArrayList<database.dir.NodeInfo>) : ArrayList<NodeInfo>{
+        val res = ArrayList<NodeInfo>()
+        val builder = NodeInfo.newBuilder()
+        for(i in li) {
+            res.add(builder
+                .setIsTree(false)
+                .setFileName(i.fileName)
+                .setPath(i.tree)
+                .setSize(i.size.toLong())
+                .setPermission(i.permission)
+                .setDate(i.fileDate.toString())
+                .build())
+        }
+        return res
+    }
+    override val name : String get() {return "GetChildNodeInfosWorker"}
+    override suspend fun run()  {
+        response.send(WorkerResponse(name,entry(arg)))
+    }
+    override val response = Channel<WorkerResponse>()
+
+}
+
+private class CreateTreeWorker
+    (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
+    override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
+        var res : CommonMessage
+        try {
+            val castArg = arg as CommonRpcUrl
+            val container = pool.getContainer(castArg.id.id.toInt())
+            container.createTree(castArg.path)
+            res = CommonMessage.newBuilder()
+                .setStatusCode(200)
+                .setMessage(castArg.path)
+                .build()
+        }catch (e : Exception) {
+            response.close()
+            if(e is ClassCastException)throw CantConvertGrpcArgsException()
+            throw e
+        }
+        return res
+    }
+
+    override val name : String get() {return "CreateTreeWorker"}
+    override suspend fun run()  {
+        response.send(WorkerResponse(name,entry(arg)))
+    }
+    override val response = Channel<WorkerResponse>()
+
+}
+
+private class DeleteTreeWorker
+    (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
+    override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
+        var res : CommonMessage
+        try {
+            val castArg = arg as CommonRpcUrl
+            val conatainer = pool.getContainer(castArg.id.id.toInt())
+            conatainer.deleteTree(castArg.path)
+            res = CommonMessage.newBuilder()
+                .setStatusCode(200)
+                .setMessage(castArg.path)
+                .build()
+        }catch (e : Exception) {
+            response.close()
+            if(e is ClassCastException)throw CantConvertGrpcArgsException()
+            throw e
+        }
+        return res
+    }
+
+    override val name : String get() {return "DeleteTreeWorker"}
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
