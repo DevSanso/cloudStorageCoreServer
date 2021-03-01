@@ -13,6 +13,7 @@ service StorageService {
     rpc GetNodeInfo(CommonRpcUrl) returns (NodeInfo);
     rpc GetNodeInfoOnlyPermission(CommonRpcUrl) returns (Permission);
     rpc GetChildNodeInfos(CommonRpcUrl) returns (NodeList);
+    rpc GetChildTrees(CommonRpcUrl) returns (Trees);
 
     rpc CreateTree(CommonRpcUrl) returns (CommonMessage);
     rpc DeleteTree(CommonRpcUrl) returns (CommonMessage);
@@ -58,6 +59,10 @@ message Offset {
     int64 offsetCount = 1;
     int64 start = 2;
     int64 end = 3;
+}
+
+message Trees {
+    string path = 1;
 }
 
 message NodeAccess {
