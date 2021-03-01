@@ -45,6 +45,14 @@ class Container(val root : String,private val db : DirDB) {
         db.switchTempToFalse(tree,fileName)
     }
 
+    fun createTree(tree : String) {
+        db.insertNodeTree(tree)
+    }
+
+    fun deleteTree(tree : String) {
+        db.deleteTree(tree)
+    }
+
     fun createReadNode(tree : String,sectorSize : Int,fileName : String) : ReadNode? {
         if(!db.existFileInOrigin(tree,fileName))
             throw FileNotFoundException()
