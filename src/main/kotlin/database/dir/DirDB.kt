@@ -16,8 +16,8 @@ data class NodeInfo(val fileName : String,val tree : String,
 
 interface OnlyGetInfoDb {
     fun existFileInOrigin(base: String,name : String) : Boolean
-    fun getNodeTrees(tree : String) : ArrayList<String>
-    fun getNodeOriginNames(tree : String) : ArrayList<String>
+    fun getTrees(tree : String) : ArrayList<String>
+    fun getNodeOriginInfos(tree : String) : ArrayList<NodeInfo>
     fun getNodeOriginInfo(tree: String,name : String) : NodeInfo?
 }
 
@@ -221,7 +221,7 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
         }
         return exist != null
     }
-    override fun getNodeTrees(base : String) : ArrayList<String> {
+    override fun getTrees(base : String) : ArrayList<String> {
         return transaction(conn) {
             val list = ArrayList<String>()
             NodeTree.select {
@@ -233,13 +233,19 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
         }
 
     }
-    override fun getNodeOriginNames(base : String) : ArrayList<String> {
+    override fun getNodeOriginInfos(tree : String) : ArrayList<NodeInfo> {
         return transaction(conn) {
-            val list = ArrayList<String>()
+            val list = ArrayList<NodeInfo>()
             NodeOriginInfo.select {
-                NodeOriginInfo.tree.eq(base) and NodeOriginInfo.isTemp.eq(false)
+                NodeOriginInfo.tree.eq(tree) and NodeOriginInfo.isTemp.eq(false)
             }.forEach {
-                list.add(it[NodeOriginInfo.fileName])
+                list.add(NodeInfo(
+                    it[NodeOriginInfo.fileName],
+                    it[NodeOriginInfo.tree],
+                    it[NodeOriginInfo.fileDate],
+                    it[NodeOriginInfo.size],
+                    it[NodeOriginInfo.permission]
+                ))
             }
             list
         }
