@@ -15,7 +15,7 @@ private fun createTemp(f : File,size : Long) {
     rf.close()
 }
 
-class Container(val root : String,private val db : DirDB) {
+class Container(val root : String,private val checkKey : ByteArray,private val db : DirDB) {
     val getDb : OnlyGetInfoDb get() {return db}
 
     private inline fun sha256Path(path : String) : ByteArray {
@@ -24,7 +24,9 @@ class Container(val root : String,private val db : DirDB) {
 
     }
     private inline fun combinePath(tree : String,fileName : String)  = tree + File.separator + fileName
-
+    fun checkHash(key : ByteArray) : Boolean {
+        return checkKey.contentEquals(key)
+    }
 
     fun createWriteNode(info : NodeInfo,sectorSize : Int,totalSectorCount : Int) : WriteNode {
         if(db.existFileInOrigin(info.tree,info.fileName))
