@@ -6,7 +6,6 @@ service StorageService {
     rpc GetLimitSectorSize(ContainerId) returns (SectorSize);
 
     rpc CreateContainer(Hash) returns (CommonMessage);
-    rpc LoadContainer(AccessKey) returns (CommonMessage);
     rpc DeleteContainer(ContainerId) returns (CommonMessage);
 
 
