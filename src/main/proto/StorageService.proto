@@ -24,7 +24,7 @@ service StorageService {
 
     rpc WriteSectorArray(NodePoint) returns (WriteMessage);
     rpc ReadSectorArray(NodePoint) returns (ReadMessage);
-
+    
 
     rpc reEditPermissionToNode(Permission) returns (CommonMessage);
 }
@@ -65,7 +65,7 @@ message Trees {
 }
 
 message NodeAccess {
-    ContainerId id = 1;
+    AccessKey id = 1;
     string path = 2;
 }
 
