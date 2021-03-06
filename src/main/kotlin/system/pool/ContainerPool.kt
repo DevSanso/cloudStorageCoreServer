@@ -26,20 +26,19 @@ class ContainerContext(val id : ContainerId,private val container : Container) {
 
         }
 
-        private fun createTempNode(tree : String,fileName : String,sectorSize : Int) : NodeId  {
-
-        }
         fun createWriteNode(tree : String, name : String) : NodeId {
 
         }
         fun createReadNode(tree : String, name : String) : NodeId {
 
         }
-
-        fun write(key : ByteArray,id : NodeId,index : Int,data : Sector) {
+        fun getNodeSize(id : NodeId) : Long {
 
         }
-        fun read(key :ByteArray,id : NodeId,index : Int) : Sector {
+        fun write(key : ByteArray,id : NodeId,start : Long,end : Long,data : ByteArray) {
+
+        }
+        fun read(key : ByteArray,id : NodeId,start : Long,end : Long) : List<Sector> {
 
         }
 
