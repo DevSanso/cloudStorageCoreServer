@@ -70,7 +70,7 @@ message NodeAccess {
 }
 
 message NodePoint {
-    ContainerId id = 1;
+    AccessKey key = 1;
     NodeAccessId nodeId = 2;
     string path = 3;
     Offset offset = 4;
@@ -88,7 +88,6 @@ message NodeList {
 }
 
 message NodeInfo{
-    bool isTree = 1;
     string fileName =2;
     string path = 3;
     int64 size = 4;
@@ -107,7 +106,8 @@ message CommonMessage {
 
 message WriteMessage {
     CommonMessage message = 1;
-    repeated int32 completeOffset = 2;
+    repeated int64 completeOffset = 2;
+
 }
 
 message ReadMessage {
