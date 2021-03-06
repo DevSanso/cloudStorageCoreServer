@@ -6,13 +6,13 @@ import java.lang.ClassCastException
 import com.google.protobuf.GeneratedMessageV3
 import StorageGrpcService.*
 import com.google.protobuf.ByteString
+import container.Sector
 
 import system.pool.ContainerPool
 
 
 import errors.*
 import kotlinx.coroutines.channels.Channel
-import system.pool.ContainerContext
 import java.io.File
 import java.nio.file.Paths
 
@@ -29,6 +29,7 @@ enum class WorKerKind {
     DeleteNode,
     LoadWriteNode,
     LoadReadNode,
+    CreateNode,
     WriteSectorArray,
     ReadSectorArray,
     reEditPermissionToNode,
@@ -51,6 +52,10 @@ abstract class Worker {
                 WorKerKind.DeleteTree -> DeleteTreeWorker(pool,arg)
                 WorKerKind.DeleteNode -> DeleteNodeWorker(pool,arg)
                 WorKerKind.LoadWriteNode -> LoadWriteNodeWorker(pool,arg)
+                WorKerKind.LoadReadNode -> LoadReadNodeWorker(pool,arg)
+                WorKerKind.WriteSectorArray -> WriteSectorArrayWorker(pool,arg)
+                WorKerKind.ReadSectorArray -> ReadSectorArrayWorker(pool,arg)
+
                 else -> throw Exception()
             }
 
@@ -174,7 +179,6 @@ private class GetNodeInfoWorker
             val nodeInfo = container.infoDb.getNodeOriginInfo(p.tree,p.name)
             if(nodeInfo != null) {
                 res = NodeInfo.newBuilder()
-                    .setIsTree(false)
                     .setFileName(nodeInfo.fileName)
                     .setPath(nodeInfo.tree)
                     .setSize(nodeInfo.size.toLong())
@@ -221,7 +225,6 @@ private class GetChildNodeInfosWorker
         val builder = NodeInfo.newBuilder()
         for(i in li) {
             res.add(builder
-                .setIsTree(false)
                 .setFileName(i.fileName)
                 .setPath(i.tree)
                 .setSize(i.size.toLong())
@@ -356,7 +359,140 @@ private class LoadWriteNodeWorker
         return res
     }
 
-    override val name : String get() {return "GetLimitSectorSizeWorker"}
+    override val name : String get() {return "LoadWriteNodeWorker"}
+    override suspend fun run()  {
+        response.send(WorkerResponse(name,entry(arg)))
+    }
+    override val response = Channel<WorkerResponse>()
+
+}
+
+private class LoadReadNodeWorker
+    (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
+    override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
+        var res : NodeAccessId
+        try {
+            val castArg = arg as NodeAccess
+            val p = pool.loadContainer(castArg.id.id.id.toInt())
+
+            if(p.checkKey(castArg.id.hash.hash.toByteArray()))
+                throw NotMatchingHashException()
+
+            val parseNode = NodePath.parsing(castArg.path)
+            val id = p.node.createReadNode(parseNode.tree,parseNode.name)
+
+            res = NodeAccessId.newBuilder()
+                .setNodeId(id)
+                .build()
+
+        }catch (e : Exception) {
+            response.close()
+            if(e is ClassCastException)throw CantConvertGrpcArgsException()
+            throw e
+        }
+        return res
+    }
+
+    override val name : String get() {return "LoadReadNodeWorker"}
+    override suspend fun run()  {
+        response.send(WorkerResponse(name,entry(arg)))
+    }
+    override val response = Channel<WorkerResponse>()
+
+}
+
+
+
+private class WriteSectorArrayWorker
+    (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
+    override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
+        var res : WriteMessage
+        try {
+            val castArg = arg as NodePoint
+            val p = pool.loadContainer(castArg.key.id.id.toInt())
+            val key = castArg.key.hash.hash.toByteArray()
+            if(p.checkKey(key))
+                throw NotMatchingHashException()
+
+            val parseNode = NodePath.parsing(castArg.path)
+            val off = castArg.offset
+            p.node.write(key,castArg.nodeId.nodeId,
+                off.start,off.end,
+                castArg.block.toByteArray())
+
+            res = WriteMessage.newBuilder()
+                .setMessage(CommonMessage
+                    .newBuilder()
+                    .setStatusCode(200)
+                    .setMessage("writing : "+castArg.path)
+                    .build())
+                .addAllCompleteOffset((off.start..off.end).map{it}).build()
+
+        }catch (e : Exception) {
+            response.close()
+            if(e is ClassCastException)throw CantConvertGrpcArgsException()
+            throw e
+        }
+        return res
+    }
+
+
+
+    override val name : String get() {return "WriteSectorArrayWorker"}
+    override suspend fun run()  {
+        response.send(WorkerResponse(name,entry(arg)))
+    }
+    override val response = Channel<WorkerResponse>()
+
+}
+private class ReadSectorArrayWorker
+    (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
+    override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
+        var res : ReadMessage
+        try {
+            val castArg = arg as NodePoint
+            val p = pool.loadContainer(castArg.key.id.id.toInt())
+            val key = castArg.key.hash.hash.toByteArray()
+            if(p.checkKey(key))
+                throw NotMatchingHashException()
+
+            val parseNode = NodePath.parsing(castArg.path)
+            val off = castArg.offset
+            val sectors = p.node.read(key,castArg.nodeId.nodeId,off.start,off.end)
+
+
+            res = ReadMessage.newBuilder()
+                .setMessage(CommonMessage
+                    .newBuilder()
+                    .setStatusCode(200)
+                    .setMessage("reading : "+castArg.path)
+                    .build())
+                .setOffset(Offset.newBuilder()
+                    .setOffsetCount(p.node.getNodeSize(castArg.nodeId.nodeId))
+                    .setStart(off.start)
+                    .setEnd(off.end)
+                    .build()
+                )
+                .setBlock(ByteString.copyFrom(convertSectorToBlock(sectors)))
+                .build()
+
+        }catch (e : Exception) {
+            response.close()
+            if(e is ClassCastException)throw CantConvertGrpcArgsException()
+            throw e
+        }
+        return res
+    }
+
+
+    private inline fun convertSectorToBlock(sector : List<Sector>) : ByteArray {
+        var res = listOf<Byte>()
+        sector.forEach {
+            res = res + it.data.sliceArray(IntRange(0,it.originSize)).toList()
+        }
+        return res.toByteArray()
+    }
+    override val name : String get() {return "ReadSectorArrayWorker"}
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
