@@ -13,6 +13,7 @@ import system.pool.ContainerPool
 
 import errors.*
 import kotlinx.coroutines.channels.Channel
+import org.joda.time.DateTime
 import java.io.File
 import java.nio.file.Paths
 
@@ -32,8 +33,7 @@ enum class WorKerKind {
     CreateNode,
     WriteSectorArray,
     ReadSectorArray,
-    reEditPermissionToNode,
-    GetNodeInfoOnlyPermission
+    ReEditPermissionToNode,
 }
 
 
@@ -55,8 +55,8 @@ abstract class Worker {
                 WorKerKind.LoadReadNode -> LoadReadNodeWorker(pool,arg)
                 WorKerKind.WriteSectorArray -> WriteSectorArrayWorker(pool,arg)
                 WorKerKind.ReadSectorArray -> ReadSectorArrayWorker(pool,arg)
-
-                else -> throw Exception()
+                WorKerKind.CreateNode -> CreateNodeWorker(pool,arg)
+                WorKerKind.ReEditPermissionToNode -> ReEditPermissionToNodeWorker(pool,arg)
             }
 
         }
@@ -68,7 +68,7 @@ abstract class Worker {
 
     abstract val name : String
     abstract suspend fun run()
-    abstract val response : Channel<WorkerResponse>
+    val response = Channel<WorkerResponse>()
 }
 
 private class GetLimitSectorSizeWorker
@@ -91,7 +91,7 @@ private class GetLimitSectorSizeWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
 
 }
 
@@ -118,7 +118,7 @@ private class CreateContainerWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
 
 }
 
@@ -147,7 +147,7 @@ private class DeleteContainerWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
 
 }
 
@@ -200,7 +200,7 @@ private class GetNodeInfoWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
 
 }
 
@@ -238,7 +238,6 @@ private class GetChildNodeInfosWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
 
 }
 
@@ -266,7 +265,7 @@ private class CreateTreeWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
 
 }
 
@@ -294,7 +293,7 @@ private class DeleteTreeWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
 
 }
 
@@ -330,7 +329,7 @@ private class DeleteNodeWorker
         response.send(WorkerResponse(name, entry(arg)))
     }
 
-    override val response = Channel<WorkerResponse>()
+
 }
 
 private class LoadWriteNodeWorker
@@ -363,7 +362,7 @@ private class LoadWriteNodeWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
 
 }
 
@@ -397,7 +396,7 @@ private class LoadReadNodeWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
 
 }
 
@@ -442,7 +441,7 @@ private class WriteSectorArrayWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
 
 }
 private class ReadSectorArrayWorker
@@ -496,10 +495,73 @@ private class ReadSectorArrayWorker
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
-    override val response = Channel<WorkerResponse>()
+
+
+}
+private class CreateNodeWorker
+    (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
+    override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
+        var res : CommonMessage
+        try {
+            val castArg = arg as NodeInfo
+            val p = pool.loadContainer(castArg.id.id.toInt())
+            p.node.createEmpty(convertInfoClass(castArg));
+            res = CommonMessage.newBuilder()
+                .setStatusCode(200)
+                .setMessage("create empty : "+castArg.path + "/" + castArg.fileName)
+                .build()
+
+        }catch (e : Exception) {
+            response.close()
+            if(e is ClassCastException)throw CantConvertGrpcArgsException()
+            throw e
+        }
+        return res
+    }
+
+
+    private inline fun convertInfoClass(info : NodeInfo) : database.dir.NodeInfo {
+        return database.dir.NodeInfo(info.fileName,info.path, DateTime(info.date),info.size,info.permission)
+    }
+    override val name : String get() {return "CreateNodeWorker"}
+    override suspend fun run()  {
+        response.send(WorkerResponse(name,entry(arg)))
+    }
 
 }
 
+private class ReEditPermissionToNodeWorker
+    (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
+    override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
+        var res : CommonMessage
+        try {
+            val castArg = arg as Permission
+            val p = pool.loadContainer(castArg.id.id.toInt())
+            val path = NodePath.parsing(castArg.path)
+            p.node.reEditPermission(path.tree,path.name,castArg.permission)
+            res = CommonMessage.newBuilder()
+                .setStatusCode(200)
+                .setMessage(makeMessage(path,castArg.permission))
+                .build()
+        }catch (e : Exception) {
+            response.close()
+            if(e is ClassCastException)throw CantConvertGrpcArgsException()
+            throw e
+        }
+        return res
+    }
+
+
+    private inline fun makeMessage(p : NodePath,permission: Int) : String {
+        return "reedit permission : " +p.tree+"/"+p.name+" : "+ permission.toString()
+    }
+    override val name : String get() {return "CreateNodeWorker"}
+    override suspend fun run()  {
+        response.send(WorkerResponse(name,entry(arg)))
+    }
+
+
+}
 
 
 
