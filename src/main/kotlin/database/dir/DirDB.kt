@@ -12,7 +12,7 @@ import org.joda.time.DateTime
 import errors.*
 
 data class NodeInfo(val fileName : String,val tree : String,
-                    val fileDate : DateTime,val size : Int,val permission : Int)
+                    val fileDate : DateTime,val size : Long,val permission : Int)
 
 interface OnlyGetInfoDb {
     fun existFileInOrigin(base: String,name : String) : Boolean
@@ -35,7 +35,7 @@ class DirDB(dbPath : String) : OnlyGetInfoDb {
     private object NodeOriginInfo : Table() {
         val fileName : Column<String> = varchar("filename",128)
         val tree : Column<String> = reference("tree",NodeTree.tree).uniqueIndex()
-        val size : Column<Int> = integer("size")
+        val size : Column<Long> = long("size")
         val fileDate : Column<DateTime> = datetime("file_date")
         val permission : Column<Int> = integer("permission")
         val isTemp : Column<Boolean> = bool("is_temp")
