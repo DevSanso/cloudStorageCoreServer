@@ -26,6 +26,10 @@ class ContainerContext(val id : ContainerId,private val container : Container) {
 
         }
 
+        fun createEmpty(info : NodeInfo) {
+
+        }
+
         fun createWriteNode(tree : String, name : String) : NodeId {
 
         }
@@ -41,7 +45,9 @@ class ContainerContext(val id : ContainerId,private val container : Container) {
         fun read(key : ByteArray,id : NodeId,start : Long,end : Long) : List<Sector> {
 
         }
+        fun reEditPermission(tree : String, name : String,permission : Int) {
 
+        }
         fun doneNode(id : NodeId) {
 
         }
