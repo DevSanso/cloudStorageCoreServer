@@ -10,7 +10,6 @@ service StorageService {
 
 
     rpc GetNodeInfo(CommonRpcUrl) returns (NodeInfo);
-    rpc GetNodeInfoOnlyPermission(CommonRpcUrl) returns (Permission);
     rpc GetChildNodeInfos(CommonRpcUrl) returns (NodeList);
     rpc GetChildTrees(CommonRpcUrl) returns (Trees);
 
@@ -79,15 +78,19 @@ message NodePoint {
 
 
 message Permission {
-    string path = 1;
-    int32 permission = 2;
+    ContainerId id = 1;
+    string path = 2;
+    int32 permission = 3;
 }
 
 message NodeList {
     repeated NodeInfo nodes = 1;
 }
 
+
 message NodeInfo{
+    ContainerId id = 1;
+
     string fileName =2;
     string path = 3;
     int64 size = 4;
