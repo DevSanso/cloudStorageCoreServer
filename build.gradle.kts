@@ -1,4 +1,5 @@
 import com.google.protobuf.gradle.*;
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     java
@@ -6,6 +7,12 @@ plugins {
     idea
     id("com.google.protobuf") version "0.8.8"
 
+}
+
+tasks.withType<KotlinCompile> {
+    kotlinOptions {
+        jvmTarget = "11"
+    }
 }
 
 group = "com.github.DevSanso"
@@ -16,6 +23,10 @@ repositories {
     jcenter()
     google()
 }
+
+
+
+
 
 buildscript {
 
