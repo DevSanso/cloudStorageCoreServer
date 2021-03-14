@@ -5,10 +5,12 @@ import java.io.RandomAccessFile
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 
+
 import utils.bytesToInt
 import utils.int32ToBytes
 import java.io.FileNotFoundException
 import java.lang.IllegalArgumentException
+import java.nio.file.Path
 
 
 const val cryptoName = "AES/CTR/NoPadding"
@@ -28,9 +30,9 @@ private inline fun getCipher(op : Int,key : SecretKey) : Cipher {
 
 
 
-class ReadNode(val file : File,val physicsSectorSize : Int) {
+class ReadNode(private val file : File,val physicsSectorSize : Int) {
     val sectorCount = file.length() / physicsSectorSize.toLong()
-
+    val hash : Path get() {return file.toPath().fileName}
 
     fun read(index : Int,key : SecretKey) : Sector {
         if(index > sectorCount)throw ArrayIndexOutOfBoundsException()
@@ -48,9 +50,10 @@ class ReadNode(val file : File,val physicsSectorSize : Int) {
     }
 }
 
-class WriteNode(val file : File,val physicsSectorSize : Int) {
+class WriteNode(private val file : File,val physicsSectorSize : Int) {
     val sectorCount = file.length() / physicsSectorSize.toLong()
     private val access = RandomAccessFile(file,"w")
+    val hash : Path get() {return file.toPath().fileName}
 
     init {
         if(!file.exists())throw FileNotFoundException()
