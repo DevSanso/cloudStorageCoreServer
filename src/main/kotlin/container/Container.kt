@@ -2,10 +2,11 @@ package container
 
 import java.io.RandomAccessFile
 import java.io.File
-import java.security.MessageDigest
 
 import database.dir.*
 import errors.*
+import utils.pathHashing256
+
 import java.io.FileNotFoundException
 
 private fun createTemp(f : File,size : Long) {
@@ -15,32 +16,43 @@ private fun createTemp(f : File,size : Long) {
     rf.close()
 }
 
-class Container(val root : String,private val checkKey : ByteArray,private val db : DirDB) {
+class Container(val root : String,val hashKey : ByteArray,
+                private val db : DirDB,val sectorSize : Int) {
     val getDb : OnlyGetInfoDb get() {return db}
 
-    private inline fun sha256Path(path : String) : ByteArray {
-        val md = MessageDigest.getInstance("SHA-256");
-        return md.digest(path.toByteArray())
-
-    }
-    private inline fun combinePath(tree : String,fileName : String)  = tree + File.separator + fileName
-    fun checkHash(key : ByteArray) : Boolean {
-        return checkKey.contentEquals(key)
-    }
-
-    fun createWriteNode(info : NodeInfo,sectorSize : Int,totalSectorCount : Int) : WriteNode {
-        if(db.existFileInOrigin(info.tree,info.fileName))
+    fun createWriteNode(tree : String,fileName : String) : WriteNode {
+        if(db.existFileInOrigin(tree,fileName))
             throw AlreadyExistFileException()
+        else if(!db.existTempInOrigin(tree,fileName))
+            throw ViolationOfAccessException()
 
-        val shaPath = sha256Path(combinePath(info.tree,info.fileName)).toString()
+        val shaPath = pathHashing256(tree,fileName).toString()
         val f = File(shaPath)
 
-        db.insertTempOriginNodeInfo(info) {
-            createTemp(f,(sectorSize * totalSectorCount).toLong())
-        }
+
 
         return WriteNode(f,sectorSize)
     }
+    private fun calcFileSize(sectorSize: Long,originSize : Long) : Long {
+        return if(originSize % sectorSize  != 0L) {
+            (originSize / sectorSize + 1L) * sectorSize
+        }else {
+            (originSize / sectorSize) * sectorSize
+        }
+    }
+    fun createTemp(info : NodeInfo) {
+
+
+        val shaPath =  pathHashing256(info.tree,info.fileName).toString()
+        val f = File(shaPath)
+
+
+        db.insertTempOriginNodeInfo(info) {
+            createTemp(f,calcFileSize(sectorSize.toLong(),info.size).toLong())
+        }
+    }
+
+
 
     fun writeNodeClose(node : WriteNode,tree : String, fileName : String) {
         node.close()
@@ -55,13 +67,13 @@ class Container(val root : String,private val checkKey : ByteArray,private val d
         db.deleteTree(tree)
     }
 
-    fun createReadNode(tree : String,sectorSize : Int,fileName : String) : ReadNode? {
+    fun createReadNode(tree : String,fileName : String) : ReadNode {
         if(!db.existFileInOrigin(tree,fileName))
             throw FileNotFoundException()
         else if(db.existTempInOrigin(tree,fileName))
             throw DbIntegrityViolationException()
 
-        val shaPath = sha256Path(combinePath(tree,fileName)).toString()
+        val shaPath = pathHashing256(tree,fileName).toString()
         val f = File(shaPath)
 
         return ReadNode(f, sectorSize)
@@ -71,7 +83,7 @@ class Container(val root : String,private val checkKey : ByteArray,private val d
         if(!db.existFileInOrigin(tree,fileName))
             throw FileNotFoundException()
 
-        val shaPath = sha256Path(combinePath(tree,fileName)).toString()
+        val shaPath = pathHashing256(tree,fileName).toString()
 
         db.deleteOriginNodeInfo(tree,fileName) {
             File(shaPath).delete()
