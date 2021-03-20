@@ -18,13 +18,14 @@ service StorageService {
 
     rpc CreateTempNode(NodeInfo) returns (CommonMessage);
     rpc DeleteNode(NodeAccess) returns (CommonMessage);
-    rpc LoadWriteNode(NodeAccess) returns (NodeAccessId);
-    rpc LoadReadNode(NodeAccess) returns (NodeAccessId);
-    rpc CloseWriteNode(NodePoint) returns (CommonMessage);
+    rpc LoadNode(NodeAccess) returns (CommonMessage);
+    //rpc LoadWriteNode(NodeAccess) returns (NodeAccessId);
+    //rpc LoadReadNode(NodeAccess) returns (NodeAccessId);
+    //rpc CloseWriteNode(NodePoint) returns (CommonMessage);
 
     rpc WriteSectorArray(NodePoint) returns (WriteMessage);
     rpc ReadSectorArray(NodePoint) returns (ReadMessage);
-    
+    rpc CloseNode(NodePoint) returns (CommonMessage);
 
     rpc reEditPermissionToNode(Permission) returns (CommonMessage);
 }

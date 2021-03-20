@@ -27,12 +27,19 @@ private inline fun getCipher(op : Int,key : SecretKey) : Cipher {
 }
 
 
+abstract class AbstractNode {
+    abstract val className : String
+    abstract val hash : Path
+}
 
-
-
-class ReadNode(private val file : File,val physicsSectorSize : Int) {
+class AccessNode(private val file : File,val physicsSectorSize : Int) {
     val sectorCount = file.length() / physicsSectorSize.toLong()
     val hash : Path get() {return file.toPath().fileName}
+
+
+    init {
+        if(!file.exists())throw FileNotFoundException()
+    }
 
     fun read(index : Int,key : SecretKey) : Sector {
         if(index > sectorCount)throw ArrayIndexOutOfBoundsException()
@@ -48,22 +55,12 @@ class ReadNode(private val file : File,val physicsSectorSize : Int) {
         val len = bytesToInt(decrypt.take(4).toByteArray())
         return convertBytesToSector(decrypt.copyOfRange(4,len+4))
     }
-}
 
-class WriteNode(private val file : File,val physicsSectorSize : Int) {
-    val sectorCount = file.length() / physicsSectorSize.toLong()
-    private val access = RandomAccessFile(file,"w")
-    val hash : Path get() {return file.toPath().fileName}
+    fun write(key : SecretKey,sector: Sector)  {
+        if(sector.index > sectorCount)throw ArrayIndexOutOfBoundsException()
 
-    init {
-        if(!file.exists())throw FileNotFoundException()
-        access.seek(0)
-    }
-    fun write(index : Int,key : SecretKey,sector: Sector)  {
-        if(index > sectorCount)throw ArrayIndexOutOfBoundsException()
-
-
-        access.seek((physicsSectorSize * index).toLong())
+        val access = RandomAccessFile(file,"w")
+        access.seek((physicsSectorSize * sector.index).toLong())
 
         val index = int32ToBytes(sector.index)
         val size = int32ToBytes(sector.originSize)
@@ -75,8 +72,10 @@ class WriteNode(private val file : File,val physicsSectorSize : Int) {
         if(encrypt.size > physicsSectorSize-4)throw IllegalArgumentException()
         val output = int32ToBytes(encrypt.size) + encrypt
         access.write(output)
+        access.close()
     }
-
-    internal fun close() = access.close()
-
 }
+
+
+
+

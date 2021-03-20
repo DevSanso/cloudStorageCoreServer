@@ -27,10 +27,9 @@ enum class WorKerKind {
     CreateTree,
     DeleteTree,
     DeleteNode,
-    LoadWriteNode,
-    LoadReadNode,
     CreateNode,
-    CloseWriteNode,
+    LoadNode,
+    CloseNode,
     WriteSectorArray,
     ReadSectorArray,
     ReEditPermissionToNode,
@@ -51,13 +50,12 @@ abstract class Worker {
                 WorKerKind.CreateTree -> CreateTreeWorker(pool,arg)
                 WorKerKind.DeleteTree -> DeleteTreeWorker(pool,arg)
                 WorKerKind.DeleteNode -> DeleteNodeWorker(pool,arg)
-                WorKerKind.LoadWriteNode -> LoadWriteNodeWorker(pool,arg)
-                WorKerKind.LoadReadNode -> LoadReadNodeWorker(pool,arg)
+                WorKerKind.LoadNode -> LoadNodeWorker(pool,arg)
                 WorKerKind.WriteSectorArray -> WriteSectorArrayWorker(pool,arg)
                 WorKerKind.ReadSectorArray -> ReadSectorArrayWorker(pool,arg)
                 WorKerKind.CreateNode -> CreateNodeWorker(pool,arg)
                 WorKerKind.ReEditPermissionToNode -> ReEditPermissionToNodeWorker(pool,arg)
-                WorKerKind.CloseWriteNode -> CloseWriteNodeWorker(pool,arg)
+                WorKerKind.CloseNode -> CloseNodeWorker(pool,arg)
             }
 
         }
@@ -306,7 +304,7 @@ private class DeleteNodeWorker
             val castArg = arg as CommonRpcUrl
             val conatainer = pool.loadContainer(castArg.id.id.toInt())
             val parsePath = NodePath.parsing(castArg.path)
-            conatainer.node.deleteRequest(parsePath.tree, parsePath.name)
+            conatainer.node.delete(parsePath.tree, parsePath.name)
             res = CommonMessage
                 .newBuilder()
                 .setStatusCode(200)
@@ -333,7 +331,9 @@ private class DeleteNodeWorker
 
 }
 
-private class LoadWriteNodeWorker
+
+
+private class LoadNodeWorker
     (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
     override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
         var res : NodeAccessId
@@ -345,7 +345,7 @@ private class LoadWriteNodeWorker
                 throw NotMatchingHashException()
 
             val parseNode = NodePath.parsing(castArg.path)
-            val id = p.node.createWriteNode(parseNode.tree,parseNode.name)
+            val id = p.node.loadNode(parseNode.tree,parseNode.name)
 
             res = NodeAccessId.newBuilder()
                 .setNodeId(id.toInt())
@@ -359,41 +359,7 @@ private class LoadWriteNodeWorker
         return res
     }
 
-    override val name : String get() {return "LoadWriteNodeWorker"}
-    override suspend fun run()  {
-        response.send(WorkerResponse(name,entry(arg)))
-    }
-
-
-}
-
-private class LoadReadNodeWorker
-    (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
-    override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
-        var res : NodeAccessId
-        try {
-            val castArg = arg as NodeAccess
-            val p = pool.loadContainer(castArg.id.id.id.toInt())
-
-            if(p.checkKey(castArg.id.hash.hash.toByteArray()))
-                throw NotMatchingHashException()
-
-            val parseNode = NodePath.parsing(castArg.path)
-            val id = p.node.createReadNode(parseNode.tree,parseNode.name)
-
-            res = NodeAccessId.newBuilder()
-                .setNodeId(id.toInt())
-                .build()
-
-        }catch (e : Exception) {
-            response.close()
-            if(e is ClassCastException)throw CantConvertGrpcArgsException()
-            throw e
-        }
-        return res
-    }
-
-    override val name : String get() {return "LoadReadNodeWorker"}
+    override val name : String get() {return "LoadNodeWorker"}
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
@@ -468,7 +434,7 @@ private class ReadSectorArrayWorker
                     .setMessage("reading : "+castArg.path)
                     .build())
                 .setOffset(Offset.newBuilder()
-                    .setOffsetCount(p.node.getNodeSize(castArg.nodeId.nodeId.toUInt()))
+                    .setOffsetCount(p.node.getNodeSectorCount(castArg.nodeId.nodeId.toUInt()))
                     .setStart(off.start)
                     .setEnd(off.end)
                     .build()
@@ -556,7 +522,7 @@ private class ReEditPermissionToNodeWorker
     private inline fun makeMessage(p : NodePath,permission: Int) : String {
         return "reedit permission : ${p.tree}/${p.name} : ${permission.toString()}"
     }
-    override val name : String get() {return "CreateNodeWorker"}
+    override val name : String get() {return "ReEditPermissionToNodeWorker"}
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }
@@ -564,14 +530,14 @@ private class ReEditPermissionToNodeWorker
 
 }
 
-private class CloseWriteNodeWorker
+private class CloseNodeWorker
     (private val pool : ContainerPool,val arg : GeneratedMessageV3) : Worker() {
     override fun entry(arg: GeneratedMessageV3): GeneratedMessageV3 {
         var res : CommonMessage
         try {
             val castArg = arg as NodePoint
             val p = pool.loadContainer(castArg.key.id.id.toInt())
-            p.node.doneWriteNode(castArg.nodeId.nodeId.toUInt())
+            p.node.closeNode(castArg.nodeId.nodeId.toUInt())
             res = CommonMessage.newBuilder()
                 .setStatusCode(200)
                 .setMessage(makeMessage(castArg.path))
@@ -588,7 +554,7 @@ private class CloseWriteNodeWorker
     private inline fun makeMessage(p : String) : String {
         return "write node close : $p"
     }
-    override val name : String get() {return "CloseWriteNodeWorker"}
+    override val name : String get() {return "CloseNodeWorker"}
     override suspend fun run()  {
         response.send(WorkerResponse(name,entry(arg)))
     }

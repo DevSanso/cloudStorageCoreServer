@@ -20,19 +20,6 @@ class Container(val root : String,val hashKey : ByteArray,
                 private val db : DirDB,val sectorSize : Int) {
     val getDb : OnlyGetInfoDb get() {return db}
 
-    fun createWriteNode(tree : String,fileName : String) : WriteNode {
-        if(db.existFileInOrigin(tree,fileName))
-            throw AlreadyExistFileException()
-        else if(!db.existTempInOrigin(tree,fileName))
-            throw ViolationOfAccessException()
-
-        val shaPath = pathHashing256(tree,fileName).toString()
-        val f = File(shaPath)
-
-
-
-        return WriteNode(f,sectorSize)
-    }
     private fun calcFileSize(sectorSize: Long,originSize : Long) : Long {
         return if(originSize % sectorSize  != 0L) {
             (originSize / sectorSize + 1L) * sectorSize
@@ -41,7 +28,6 @@ class Container(val root : String,val hashKey : ByteArray,
         }
     }
     fun createTemp(info : NodeInfo) {
-
 
         val shaPath =  pathHashing256(info.tree,info.fileName).toString()
         val f = File(shaPath)
@@ -53,12 +39,6 @@ class Container(val root : String,val hashKey : ByteArray,
     }
 
 
-
-    fun writeNodeClose(node : WriteNode,tree : String, fileName : String) {
-        node.close()
-        db.switchTempToFalse(tree,fileName)
-    }
-
     fun createTree(tree : String) {
         db.insertNodeTree(tree)
     }
@@ -67,7 +47,7 @@ class Container(val root : String,val hashKey : ByteArray,
         db.deleteTree(tree)
     }
 
-    fun createReadNode(tree : String,fileName : String) : ReadNode {
+    fun createNode(tree : String,fileName : String) : AccessNode {
         if(!db.existFileInOrigin(tree,fileName))
             throw FileNotFoundException()
         else if(db.existTempInOrigin(tree,fileName))
@@ -75,8 +55,7 @@ class Container(val root : String,val hashKey : ByteArray,
 
         val shaPath = pathHashing256(tree,fileName).toString()
         val f = File(shaPath)
-
-        return ReadNode(f, sectorSize)
+        return AccessNode(f,sectorSize)
     }
 
     fun delete(tree : String,fileName : String) {

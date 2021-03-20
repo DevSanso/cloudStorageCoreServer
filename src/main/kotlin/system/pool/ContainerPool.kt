@@ -1,20 +1,18 @@
 package system.pool
 
+
+import container.*
 import java.util.concurrent.ConcurrentHashMap
 import java.nio.file.Path
 import java.nio.file.Paths
 
 import database.system.*
 import database.dir.*
-import container.Container
-import container.ReadNode
-import container.Sector
-import container.WriteNode
 import errors.*
 import utils.pathHashing256
+import utils.light32Hash
 
-import kotlin.random.Random
-import kotlin.random.nextUInt
+
 
 typealias ContainerId = Int
 typealias NodeId = UInt
@@ -22,14 +20,10 @@ typealias NodeId = UInt
 
 
 
-class ContainerModel  {
-    val id : ContainerId
-    private val container : Container
+class ContainerModel internal constructor(id : ContainerId,container : Container)  {
+    val id : ContainerId = id
+    private val container : Container = container
 
-    internal constructor(id : ContainerId,container : Container) {
-        this.id = id
-        this.container = container
-    }
 
     inner class Tree internal constructor() {
         fun create(tree : String) {
@@ -41,19 +35,23 @@ class ContainerModel  {
     }
 
     inner class Node internal constructor() {
-        private val willDeleteSet = HashSet<Path>()
-        private val writeNodes = ConcurrentHashMap<NodeId, WriteNode>()
-        private val readNodes = ConcurrentHashMap<NodeId, ReadNode>()
-        private fun ConcurrentHashMap<NodeId, ReadNode>.exist(eqOp :  Path) : Boolean {
+        private val nodes = ConcurrentHashMap<NodeId, AccessNode>()
+
+        private fun ConcurrentHashMap<NodeId, AccessNode>.exist(eqOp :  Path) : Boolean {
             return this.values.any { it.hash ==  eqOp }
+        }
+        private fun ConcurrentHashMap<NodeId, AccessNode>.push(n : AccessNode) : NodeId {
+            var k = light32Hash(n.hash.toString(),id.toUInt())
+
+            while(this.keys.any { it == k }) { k += 1u }
+            this.put(k,n)
+            return k
         }
 
 
-
-
-        fun deleteRequest(tree : String,fileName : String) {
+        fun delete(tree : String,fileName : String) {
             val eqOp = Paths.get(pathHashing256(tree,fileName).toString())
-            if(readNodes.exist(eqOp)) {
+            if(nodes.exist(eqOp) ) {
 
             }else {
 
@@ -65,18 +63,29 @@ class ContainerModel  {
             container.createTemp(info)
         }
 
-        fun createWriteNode(tree : String, name : String) : NodeId {
 
-
+        fun loadNode(tree : String,name : String) : NodeId {
+            val node = container.createNode(tree,name)
+            return nodes.push(node)
         }
-        fun createReadNode(tree : String, name : String) : NodeId {
-
+        fun getNodeSectorCount(id : NodeId) : Long {
+            val n = nodes[id]
+            if(n == null) {
+                throw NotExistException()
+            }else {
+                return n.sectorCount
+            }
         }
-        fun getNodeSize(id : NodeId) : Long {
 
-        }
         fun write(key : ByteArray,id : NodeId,start : Long,end : Long,data : ByteArray) {
-
+            val n = nodes[id]
+            if(n == null) {
+                throw NotExistException()
+            }else {
+                (start..end).forEach{
+                    n.write(key.toString(),Sector(it.toInt()))
+                }
+            }
         }
         fun read(key : ByteArray,id : NodeId,start : Long,end : Long) : List<Sector> {
 
@@ -84,7 +93,7 @@ class ContainerModel  {
         fun reEditPermission(tree : String, name : String,permission : Int) {
 
         }
-        fun doneWriteNode(id : NodeId) {
+        fun closeNode(id : NodeId) {
 
         }
 
